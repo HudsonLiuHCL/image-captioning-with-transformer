@@ -50,7 +50,6 @@ class Trainer:
 
         
         loss = torch.nn.functional.cross_entropy(predictions, labels)
-        loss = None
         
 
         return loss
