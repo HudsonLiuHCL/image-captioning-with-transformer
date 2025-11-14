@@ -124,7 +124,7 @@ class FeedForwardBlock(nn.Module):
         super().__init__()
         self.mlp = nn.Sequential(
             nn.Linear(input_dim, dim_feedforward),
-            nn.ReLU(),
+            nn.GELU(),
             nn.Dropout(dropout),
             nn.Linear(dim_feedforward, input_dim)
         )
