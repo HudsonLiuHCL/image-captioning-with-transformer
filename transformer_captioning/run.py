@@ -30,7 +30,7 @@ transformer = TransformerDecoder(
 
 trainer = Trainer(transformer, train_dataloader, val_dataloader,
           num_epochs=100,
-          learning_rate=1e-4,
+          learning_rate=1e-3,
           device = device
         )
 
