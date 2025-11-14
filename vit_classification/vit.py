@@ -54,10 +54,13 @@ class ViT(nn.Module):
         self.num_classes = num_classes
         self.device = device
 
-        self.patch_embedding = None # TODO (Linear Layer that takes as input a patch and outputs a d_model dimensional vector)
-        self.positional_encoding = None # TODO (use the positional encoding from the transformer captioning solution)
-        self.fc = None # TODO (takes as input the embedding corresponding to the [CLS] token and outputs the logits for each class)
-        self.cls_token = None # TODO (learnable [CLS] token embedding)
+        self.patch_embedding = nn.Linear(patch_dim, d_model)
+
+        self.positional_encoding = PositionalEncoding(d_model)  
+
+        self.fc = nn.Linear(d_model, num_classes)
+
+        self.cls_token = nn.Parameter(torch.zeros(1, 1, d_model))
 
         self.layers = nn.ModuleList([EncoderLayer(d_model, num_heads, d_ff) for _ in range(num_layers)])
 
@@ -66,42 +69,30 @@ class ViT(nn.Module):
         self.to(device)
 
     def patchify(self, images):
-        """
-            Given a batch of images, divide each image into patches and flatten each patch into a vector.
-            Inputs:
-                - images: a FloatTensor of shape (N, 3, H, W) giving a minibatch of images
-            Returns:
-                - patches: a FloatTensor of shape (N, num_patches, patch_dim x patch_dim x 3) giving a minibatch of patches    
-        """
+        N, C, H, W = images.shape
+        P = int((self.patch_dim // C) ** 0.5)
 
-        patches = None # TODO - Break images into a grid of patches
-        # Feel free to use pytorch built-in functions to do this
-        
+        patches = images.unfold(2, P, P).unfold(3, P, P)  # (N, 3, H/P, W/P, P, P)
+        patches = patches.contiguous().view(N, self.num_patches, -1)
         return patches
 
     def forward(self, images):
-        """
-            Given a batch of images, compute the logits for each class. 
-            Inputs:
-                - images: a FloatTensor of shape (N, 3, H, W) giving a minibatch of images
-            Returns:
-                - logits: a FloatTensor of shape (N, C) giving the logits for each class
-        """
-        
         patches = self.patchify(images)
         patches_embedded = self.patch_embedding(patches)
-        
-        output = None # TODO (append a CLS token to the beginning of the sequence of patch embeddings)
 
-        output = self.positional_encoding(patches_embedded)
-        mask = None # TODO (generate a mask and feed it to the self-attention layer in ViT)
+        cls = self.cls_token.expand(patches_embedded.size(0), -1, -1)
+        output = torch.cat([cls, patches_embedded], dim=1)
+
+        output = self.positional_encoding(output)
+
+        mask = None
 
         for layer in self.layers:
             output = layer(output, mask)
 
-        output = None # TODO (take the embedding corresponding to the [CLS] token and feed it through a linear layer to obtain the logits for each class)
-
+        output = self.fc(output[:, 0])
         return output
+
 
     def _init_weights(self, module):
         """
